@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚴‍♂️ Garmin Cycling Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-rose: #f43f5e;
+            --accent-amber: #f59e0b;
+            --accent-purple: #c084fc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #38bdf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .last-update {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .kpi-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .kpi-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .kpi-value.tss { color: var(--accent-purple); }
+        .kpi-value.time { color: var(--accent-blue); }
+        .kpi-value.distance { color: #10b981; }
+        .kpi-value.ftp { color: var(--accent-amber); }
+
+        /* Dashboard Tabs */
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Charts Layout */
+        .chart-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .chart-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .radio-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+        }
+
+        .radio-btn.active {
+            background: var(--accent-blue);
+            color: #000;
+            border-color: var(--accent-blue);
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .chart-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Table and Search */
+        .table-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            margin-top: 2rem;
+        }
+
+        .search-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            width: 300px;
+            transition: all 0.2s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .filter-info {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            color: var(--accent-blue);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+
+        .reset-filter-btn {
+            background: var(--accent-blue);
+            color: #000;
+            border: none;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .reset-filter-btn:hover {
+            opacity: 0.9;
+        }
+
+        .table-wrapper {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            overflow-x: auto;
+            backdrop-filter: blur(12px);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        th, td {
+            padding: 0.8rem 1.2rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            background: #151f32; /* Slightly dark color for header to look unified during scroll */
+            z-index: 10;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+        }
+
+        /* Custom scrollbar for better visibility of horizontal scrolling */
+        .table-wrapper::-webkit-scrollbar {
+            height: 10px;
+            width: 10px;
+        }
+        .table-wrapper::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            border: 2px solid #1e293b;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: rgba(56, 189, 248, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>🚴‍♂️ Garmin Cycling Dashboard</h1>
+                <div class="last-update" id="last-update-time"></div>
+            </div>
+        </header>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">今週の総TSS</div>
+                <div class="kpi-value tss" id="kpi-tss">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">今週の総時間</div>
+                <div class="kpi-value time" id="kpi-time">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">今週の総距離</div>
+                <div class="kpi-value distance" id="kpi-distance">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">最新FTP</div>
+                <div class="kpi-value ftp" id="kpi-ftp">-</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('tab-charts')">📊 週単位分析（グラフ）</button>
+            <button class="tab-btn" onclick="switchTab('tab-history')">📋 アクティビティ履歴全体</button>
+        </div>
+
+        <!-- TAB 1: CHARTS -->
+        <div id="tab-charts" class="tab-content active">
+            <div class="chart-container">
+                <div class="chart-selector">
+                    <button class="radio-btn active" id="btn-pmc" onclick="togglePMCChart(true)">TSS ＆ CTL / TSB推移</button>
+                    <button class="radio-btn" id="btn-dist" onclick="togglePMCChart(false)">総走行距離 / 獲得標高</button>
+                </div>
+                <div id="chart-pmc-wrapper">
+                    <div id="chart-pmc" style="height: 450px;"></div>
+                </div>
+                <div id="chart-dist-wrapper" class="chart-row" style="display: none;">
+                    <div id="chart-distance" style="height: 350px;"></div>
+                    <div id="chart-elevation" style="height: 350px;"></div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div id="chart-zone" style="height: 400px;"></div>
+            </div>
+
+            <!-- Filter Info -->
+            <div class="filter-info" id="filter-banner">
+                <span id="filter-text">選択された週: 2026-06-22～</span>
+                <button class="reset-filter-btn" onclick="resetWeeklyFilter()">フィルター解除</button>
+            </div>
+
+            <!-- Table Header -->
+            <div class="table-header-row">
+                <h2 id="table-title">📋 アクティビティ一覧（全期間）</h2>
+            </div>
+        </div>
+
+        <!-- TAB 2: HISTORY -->
+        <div id="tab-history" class="tab-content">
+            <div class="table-header-row">
+                <h2>📋 全アクティビティ履歴一覧</h2>
+                <input type="text" class="search-box" id="search-input" placeholder="アクティビティ名で検索..." oninput="handleSearch(this.value)">
+            </div>
+        </div>
+
+        <!-- Shared Table Wrapper -->
+        <div class="table-wrapper">
+            <table id="activity-table">
+                <thead>
+                    <tr>
+                        <th>開始時間</th>
+                        <th>アクティビティ名</th>
+                        <th>タイプ</th>
+                        <th>距離(km)</th>
+                        <th>時間(分)</th>
+                        <th>獲得標高(m)</th>
+                        <th>平均速度(km/h)</th>
+                        <th>最高速度(km/h)</th>
+                        <th>平均ケイデンス(rpm)</th>
+                        <th>最大ケイデンス(rpm)</th>
+                        <th>平均パワー(W)</th>
+                        <th>最大パワー(W)</th>
+                        <th>最大平均パワー(20分)(W)</th>
+                        <th>NP(W)</th>
+                        <th>IF</th>
+                        <th>TSS</th>
+                        <th>推定FTP</th>
+                        <th>平均心拍数</th>
+                        <th>最大心拍数</th>
+                        <th>消費カロリー</th>
+                        <th>VO2Max</th>
+                        <th>有酸素TE</th>
+                        <th>無酸素TE</th>
+                        <th>Z1(分)</th>
+                        <th>Z2(分)</th>
+                        <th>Z3(分)</th>
+                        <th>Z4(分)</th>
+                        <th>Z5(分)</th>
+                        <th>Z6(分)</th>
+                        <th>Z7(分)</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr>
+                        <td colspan="30" class="loading">データを読み込んでいます...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let allData = null;
+        let selectedWeek = null;
+        let searchQuery = "";
+        let showPMCChart = true;
+
+        const zoneColors = {
+            "ゾーン1": "#94a3b8",
+            "ゾーン2": "#38bdf8",
+            "ゾーン3": "#10b981",
+            "ゾーン4": "#f59e0b",
+            "ゾーン5": "#f472b6",
+            "ゾーン6": "#f43f5e",
+            "ゾーン7": "#c084fc"
+        };
+
+        // Dark Theme Chart Layout Config with explicitly styled hoverlabel to avoid dark text bug
+        const darkLayoutDefaults = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#f8fafc', family: 'Outfit' },
+            xaxis: {
+                gridcolor: 'rgba(255,255,255,0.05)',
+                linecolor: 'rgba(255,255,255,0.1)',
+                zerolinecolor: 'rgba(255,255,255,0.1)'
+            },
+            yaxis: {
+                gridcolor: 'rgba(255,255,255,0.05)',
+                linecolor: 'rgba(255,255,255,0.1)',
+                zerolinecolor: 'rgba(255,255,255,0.1)'
+            },
+            margin: { t: 40, b: 60, l: 60, r: 60 },
+            legend: { orientation: 'h', y: 1.1, x: 1, xanchor: 'right' },
+            hoverlabel: {
+                bgcolor: '#1e293b',
+                bordercolor: 'rgba(255, 255, 255, 0.15)',
+                font: { color: '#f8fafc', family: 'Outfit', size: 13 }
+            }
+        };
+
+        // Fetch data from API
+        async function loadData() {
+            try {
+                const response = await fetch('/api/data');
+                allData = await response.json();
+                
+                // Update KPIs
+                document.getElementById('kpi-tss').innerText = allData.kpis.thisWeekTSS.toFixed(1);
+                document.getElementById('kpi-time').innerText = (allData.kpis.thisWeekDuration / 60.0).toFixed(1) + ' 時間';
+                document.getElementById('kpi-distance').innerText = allData.kpis.thisWeekDistance.toFixed(1) + ' km';
+                document.getElementById('kpi-ftp').innerText = allData.kpis.latestFTP.toFixed(0) + ' W';
+                
+                document.getElementById('last-update-time').innerText = '最終更新: ' + new Date().toLocaleString();
+
+                // Draw Charts
+                drawPMCChart();
+                drawDistCharts();
+                drawZoneChart();
+
+                // Render Table
+                renderTable();
+
+            } catch (error) {
+                console.error("Error loading data:", error);
+                document.getElementById('table-body').innerHTML = `<tr><td colspan="30" class="loading" style="color:var(--accent-rose)">データの読み込みに失敗しました。</td></tr>`;
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tabId === 'tab-charts') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('tab-charts').classList.add('active');
+                // Move table to charts tab if not there
+                document.getElementById('tab-charts').appendChild(document.querySelector('.table-wrapper'));
+                document.getElementById('table-title').style.display = 'block';
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('tab-history').classList.add('active');
+                // Move table to history tab
+                document.getElementById('tab-history').appendChild(document.querySelector('.table-wrapper'));
+                document.getElementById('table-title').style.display = 'none';
+            }
+            resetWeeklyFilter();
+        }
+
+        function togglePMCChart(showPMC) {
+            showPMCChart = showPMC;
+            if (showPMC) {
+                document.getElementById('btn-pmc').classList.add('active');
+                document.getElementById('btn-dist').classList.remove('active');
+                document.getElementById('chart-pmc-wrapper').style.display = 'block';
+                document.getElementById('chart-dist-wrapper').style.display = 'none';
+            } else {
+                document.getElementById('btn-pmc').classList.remove('active');
+                document.getElementById('btn-dist').classList.add('active');
+                document.getElementById('chart-pmc-wrapper').style.display = 'none';
+                document.getElementById('chart-dist-wrapper').style.display = 'grid';
+                // Trigger resize to fix layout
+                Plotly.Plots.resize('chart-distance');
+                Plotly.Plots.resize('chart-elevation');
+            }
+        }
+
+        // Draw PMC (TSS, CTL, TSB)
+        function drawPMCChart() {
+            const x = allData.weekly.map(w => w.weekStart);
+            const tss = allData.weekly.map(w => w.tss);
+            const ctl = allData.weekly.map(w => w.ctl);
+            const tsb = allData.weekly.map(w => w.tsb);
+
+            const traceTSS = {
+                x: x,
+                y: tss,
+                name: '週次総TSS (負荷)',
+                type: 'bar',
+                marker: { color: 'rgba(192, 132, 252, 0.4)' },
+                hovertemplate: '%{y:.1f}<extra></extra>' // simpler template to let unified hover format nicely
+            };
+
+            const traceCTL = {
+                x: x,
+                y: ctl,
+                name: 'CTL (体力)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#38bdf8', width: 3 },
+                marker: { size: 6 },
+                yaxis: 'y2',
+                hovertemplate: '%{y:.1f}<extra></extra>'
+            };
+
+            const traceTSB = {
+                x: x,
+                y: tsb,
+                name: 'TSB (調子)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#f59e0b', width: 2, dash: 'dot' },
+                marker: { size: 6 },
+                yaxis: 'y2',
+                hovertemplate: '%{y:.1f}<extra></extra>'
+            };
+
+            const layout = {
+                ...darkLayoutDefaults,
+                title: '週次 TSS と PMC（CTL / TSB）推移 ［クリックして下の表をフィルター］',
+                yaxis: {
+                    ...darkLayoutDefaults.yaxis,
+                    title: '週次総TSS'
+                },
+                yaxis2: {
+                    title: 'CTL / TSB スコア',
+                    overlaying: 'y',
+                    side: 'right',
+                    gridcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#f8fafc' }
+                },
+                hovermode: 'x'
+            };
+
+            Plotly.newPlot('chart-pmc', [traceTSS, traceCTL, traceTSB], layout, {responsive: true});
+
+            // Click event logic
+            document.getElementById('chart-pmc').on('plotly_click', function(data) {
+                if (data.points && data.points.length > 0) {
+                    setWeeklyFilter(data.points[0].x);
+                }
+            });
+        }
+
+        // Draw Distance and Elevation Charts
+        function drawDistCharts() {
+            const x = allData.weekly.map(w => w.weekStart);
+            const dist = allData.weekly.map(w => w.distance);
+            const elev = allData.weekly.map(w => w.elevation);
+
+            const traceDist = {
+                x: x,
+                y: dist,
+                name: '距離',
+                type: 'bar',
+                marker: { color: '#10b981' },
+                hovertemplate: '%{y:.1f} km<extra></extra>'
+            };
+
+            const traceElev = {
+                x: x,
+                y: elev,
+                name: '獲得標高',
+                type: 'bar',
+                marker: { color: '#a855f7' },
+                hovertemplate: '%{y:.0f} m<extra></extra>'
+            };
+
+            const layoutDist = {
+                ...darkLayoutDefaults,
+                title: '週次 総走行距離(km)',
+                yaxis: { ...darkLayoutDefaults.yaxis, title: '距離(km)' },
+                hovermode: 'x'
+            };
+
+            const layoutElev = {
+                ...darkLayoutDefaults,
+                title: '週次 総獲得標高(m)',
+                yaxis: { ...darkLayoutDefaults.yaxis, title: '獲得標高(m)' },
+                hovermode: 'x'
+            };
+
+            Plotly.newPlot('chart-distance', [traceDist], layoutDist, {responsive: true});
+            Plotly.newPlot('chart-elevation', [traceElev], layoutElev, {responsive: true});
+
+            const clickHandler = function(data) {
+                if (data.points && data.points.length > 0) {
+                    setWeeklyFilter(data.points[0].x);
+                }
+            };
+
+            document.getElementById('chart-distance').on('plotly_click', clickHandler);
+            document.getElementById('chart-elevation').on('plotly_click', clickHandler);
+        }
+
+        // Draw Power Zone Stacked Bar Chart
+        function drawZoneChart() {
+            const x = allData.weekly.map(w => w.weekStart);
+            
+            const traces = [];
+            for (let z = 1; z <= 7; z++) {
+                const zoneData = allData.weekly.map(w => w.zones[z - 1]);
+                traces.push({
+                    x: x,
+                    y: zoneData,
+                    name: 'ゾーン' + z,
+                    type: 'bar',
+                    marker: { color: zoneColors['ゾーン' + z] },
+                    hovertemplate: '%{y:.1f} 分<extra></extra>'
+                });
+            }
+
+            const layout = {
+                ...darkLayoutDefaults,
+                title: '週単位の強度別ボリューム配分 ［棒をクリックして下の表をフィルター］',
+                barmode: 'stack',
+                yaxis: { ...darkLayoutDefaults.yaxis, title: '滞在時間(分)' },
+                legend: { ...darkLayoutDefaults.legend, traceorder: 'normal' },
+                hovermode: 'x'
+            };
+
+            Plotly.newPlot('chart-zone', traces, layout, {responsive: true});
+
+            document.getElementById('chart-zone').on('plotly_click', function(data) {
+                if (data.points && data.points.length > 0) {
+                    setWeeklyFilter(data.points[0].x);
+                }
+            });
+        }
+
+        // Set week filter
+        function setWeeklyFilter(week) {
+            selectedWeek = week;
+            document.getElementById('filter-banner').style.display = 'flex';
+            document.getElementById('filter-text').innerText = '選択された週: ' + week;
+            document.getElementById('table-title').innerText = `📋 選択された週 (${week}) のアクティビティ一覧`;
+            renderTable();
+        }
+
+        // Reset week filter
+        function resetWeeklyFilter() {
+            selectedWeek = null;
+            document.getElementById('filter-banner').style.display = 'none';
+            document.getElementById('table-title').innerText = '📋 アクティビティ一覧（全期間）';
+            renderTable();
+        }
+
+        function handleSearch(query) {
+            searchQuery = query;
+            renderTable();
+        }
+
+        // Helper to check if activity belongs to a specific week
+        function isInWeek(actDateStr, weekStr) {
+            if (!weekStr) return true;
+            const weekDate = new Date(weekStr.replace('～', ''));
+            const actDate = new Date(actDateStr);
+            const diffTime = actDate - weekDate;
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+            return diffDays >= 0 && diffDays < 7;
+        }
+
+        // Render Table Body
+        function renderTable() {
+            if (!allData) return;
+
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            let filtered = allData.activities;
+
+            // Apply week filter (only on Tab 1)
+            const isTabCharts = document.getElementById('tab-charts').classList.contains('active');
+            if (isTabCharts && selectedWeek) {
+                filtered = filtered.filter(act => isInWeek(act.date, selectedWeek));
+            }
+
+            // Apply search query (only on Tab 2)
+            const isTabHistory = document.getElementById('tab-history').classList.contains('active');
+            if (isTabHistory && searchQuery) {
+                const query = searchQuery.toLowerCase();
+                filtered = filtered.filter(act => act.name.toLowerCase().includes(query));
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="30" class="loading">データが見つかりませんでした。</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(act => {
+                const tr = document.createElement('tr');
+                
+                const ftpStr = act.ftp > 0 ? act.ftp.toFixed(0) + ' W' : '-';
+
+                tr.innerHTML = `
+                    <td>${act.startTimeLocal}</td>
+                    <td style="font-weight:600; white-space: normal; min-width: 200px;">${act.name}</td>
+                    <td><span style="background:rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius: 4px; font-size:0.8rem">${act.type}</span></td>
+                    <td>${act.distanceKm.toFixed(2)} km</td>
+                    <td>${act.durationMin.toFixed(1)} 分</td>
+                    <td>${act.elevationM.toFixed(1)} m</td>
+                    <td>${(act.avgSpeed * 3.6).toFixed(1)} km/h</td>
+                    <td>${(act.maxSpeed * 3.6).toFixed(1)} km/h</td>
+                    <td>${act.avgCadence.toFixed(0)} rpm</td>
+                    <td>${act.maxCadence.toFixed(0)} rpm</td>
+                    <td>${act.avgPower.toFixed(0)} W</td>
+                    <td>${act.maxPower.toFixed(0)} W</td>
+                    <td>${act.max20MinPower.toFixed(0)} W</td>
+                    <td>${act.normalizedPower.toFixed(0)} W</td>
+                    <td>${act.intensityFactor.toFixed(3)}</td>
+                    <td style="color:var(--accent-purple); font-weight:600">${act.tss.toFixed(1)}</td>
+                    <td style="color:var(--accent-amber); font-weight:600">${ftpStr}</td>
+                    <td>${act.avgHR.toFixed(0)}</td>
+                    <td>${act.maxHR.toFixed(0)}</td>
+                    <td>${act.calories.toFixed(0)} kcal</td>
+                    <td>${act.vo2Max.toFixed(0)}</td>
+                    <td>${act.aerobicTE.toFixed(1)}</td>
+                    <td>${act.anaerobicTE.toFixed(1)}</td>
+                    <td>${act.zone1.toFixed(1)} 分</td>
+                    <td>${act.zone2.toFixed(1)} 分</td>
+                    <td>${act.zone3.toFixed(1)} 分</td>
+                    <td>${act.zone4.toFixed(1)} 分</td>
+                    <td>${act.zone5.toFixed(1)} 分</td>
+                    <td>${act.zone6.toFixed(1)} 分</td>
+                    <td>${act.zone7.toFixed(1)} 分</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Initial load
+        loadData();
+    </script>
+</body>
+</html>

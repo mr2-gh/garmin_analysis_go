@@ -1,0 +1,29 @@
+# Binaries and executables
+garmin-cli
+garmin-cli.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output / User Data (Local CSV files)
+garmin_cycling_activities.csv
+*.csv
+
+# Environment variables and private credentials
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

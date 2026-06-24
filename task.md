@@ -1,0 +1,15 @@
+- `[x]` Goモジュールの初期化と依存関係の設定
+- `[x]` `internal/garmin` パッケージの作成と `lexyurk/garmin-cli` のコード移植（auth, client, activitiesの一部）
+  - `[x]` `auth/` パッケージ移植
+  - `[x]` `client/` パッケージ移植
+  - `[x]` `activities/` パッケージ移植
+- `[x]` `pkg/pmc/pmc.go`（CTL/ATL/TSB計算ロジック）の実装
+- `[x]` `pkg/data/parser.go`（CSVパーサー・マッパー）の実装
+- `[x]` `cmd/fetch.go` の実装（データ取得とCSV出力）
+- `[x]` `cmd/stats.go` の実装（分析とターミナル簡易グラフ）
+  - `[x]` `--web` / `--port` による内蔵Webサーバー機能の実装
+  - `[x]` ダッシュボードフロントエンド（`index.html`）の実装と組み込み
+- `[x]` `cmd/list.go` の実装（アクティビティテーブル表示）
+- `[x]` `main.go` の実装（Cobraコマンド統合）
+- `[x]` 動作確認とビルド検証 (ローカル環境でのビルド成功)
+- `[x]` ドキュメント (`walkthrough.md`) の作成とまとめ
