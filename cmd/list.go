@@ -20,8 +20,11 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "保存されているサイクリングアクティビティの一覧を表示します",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		csvFilename := "garmin_cycling_activities.csv"
-		acts, err := data.LoadCSV(csvFilename)
+		csvPath, err := getCSVPath("garmin_cycling_activities.csv")
+		if err != nil {
+			return err
+		}
+		acts, err := data.LoadCSV(csvPath)
 		if err != nil {
 			return fmt.Errorf("CSVファイルのロードに失敗しました: %w (先に `fetch` コマンドを実行してください)", err)
 		}
