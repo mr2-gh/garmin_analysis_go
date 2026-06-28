@@ -100,8 +100,11 @@ var statsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "トレーニングステータスとPMCモデルの統計情報を表示します（--webでブラウザ表示可能）",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		csvFilename := "garmin_cycling_activities.csv"
-		acts, err := data.LoadCSV(csvFilename)
+		csvPath, err := getCSVPath("garmin_cycling_activities.csv")
+		if err != nil {
+			return err
+		}
+		acts, err := data.LoadCSV(csvPath)
 		if err != nil {
 			return fmt.Errorf("CSVファイルのロードに失敗しました: %w (先に `fetch` コマンドを実行してください)", err)
 		}

@@ -114,13 +114,16 @@ var fetchCmd = &cobra.Command{
 		fmt.Printf("      -> %d 件 of サイクリングアクティビティを抽出しました。\n", len(filteredActs))
 
 		// CSVファイルへの書き出し
-		outputFilename := "garmin_cycling_activities.csv"
-		err = data.WriteCSV(outputFilename, filteredActs)
+		csvPath, err := getCSVPath("garmin_cycling_activities.csv")
+		if err != nil {
+			return err
+		}
+		err = data.WriteCSV(csvPath, filteredActs)
 		if err != nil {
 			return fmt.Errorf("CSVへの書き出しに失敗しました: %w", err)
 		}
 
-		fmt.Printf("[4/4] すべての処理が完了しました。データは %s に正常に保存されました。\n", outputFilename)
+		fmt.Printf("[4/4] すべての処理が完了しました。データは %s に正常に保存されました。\n", csvPath)
 		return nil
 	},
 }
