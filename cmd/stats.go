@@ -119,9 +119,9 @@ var statsCmd = &cobra.Command{
 		// 解析対象の日付範囲を特定
 		var minDate, maxDate time.Time
 		for _, act := range acts {
-			t, err := time.Parse("2006-01-02T15:04:05", act.StartTimeLocal)
+			t, err := time.ParseInLocation("2006-01-02T15:04:05", act.StartTimeLocal, time.Local)
 			if err != nil {
-				t, err = time.Parse("2006-01-02", act.Date)
+				t, err = time.ParseInLocation("2006-01-02", act.Date, time.Local)
 			}
 			if err == nil {
 				if minDate.IsZero() || t.Before(minDate) {
@@ -188,7 +188,7 @@ var statsCmd = &cobra.Command{
 		thisWeekDuration := 0.0
 		thisWeekDistance := 0.0
 		for _, act := range acts {
-			t, err := time.Parse("2006-01-02", act.Date)
+			t, err := time.ParseInLocation("2006-01-02", act.Date, time.Local)
 			if err == nil {
 				if !t.Before(currentWeekStart) && !t.After(today) {
 					thisWeekTSS += act.TSS
@@ -247,7 +247,7 @@ var statsCmd = &cobra.Command{
 
 		// 各アクティビティから週次の合計距離・時間を加算
 		for _, act := range acts {
-			t, err := time.Parse("2006-01-02", act.Date)
+			t, err := time.ParseInLocation("2006-01-02", act.Date, time.Local)
 			if err == nil {
 				dOffset := int(t.Weekday() - time.Monday)
 				if dOffset < 0 {
@@ -412,7 +412,7 @@ func startWebServer(port int, acts []activities.Summary, pmcCalculated []pmc.Dai
 
 		// 各アクティビティから週次の合計値を加算
 		for _, act := range acts {
-			t, err := time.Parse("2006-01-02", act.Date)
+			t, err := time.ParseInLocation("2006-01-02", act.Date, time.Local)
 			if err == nil {
 				dOffset := int(t.Weekday() - time.Monday)
 				if dOffset < 0 {
